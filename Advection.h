@@ -12,9 +12,12 @@ protected:
     double** _density0Matrix;
     double** _density1Matrix;
     double** _density2Matrix;
+    double** _integral;
+    double** _center;
 
     double** _uVelocity;
     double** _vVelocity;
+    //char* _integralFilename;
 
     double _maxU, _maxV, _deltaT, _nowT;
 
@@ -46,11 +49,12 @@ protected:
         }
         double max = sqrt(pow(_maxU, 2) +  pow(_maxV, 2));
         _deltaT = _dx/(4*max);
+        //cout << _maxU << " " << _maxV << " " << max << " " << _deltaT << "\n";
     }
 
 
-    void setBoundaryConditions() {
-    }
+//    void setBoundaryConditions() {
+//    }
 
 public:
     Advection(int xsize, int ysize, double dx, double dy,  FlagMatrix* flagMatrix, function < void(double** uMatrix, double** vMatrix) > fillVeloctyMatrixFnc):
@@ -61,6 +65,8 @@ public:
 
         _uVelocity = imnd::matrix(_xsize, _ysize);
         _vVelocity = imnd::matrix(_xsize, _ysize);
+        _integral = imnd::matrix(10000,2);
+        _center = imnd::matrix(10000, 2);
     }
 
     void Reset() {
@@ -78,7 +84,7 @@ public:
 
     void NextTimestamp() {
         makeAdvection();
-        //calculateIntegral();
+        calculateIntegral();
 
         if(_iter++%int(100/_deltaT/50) == 0) {
             imnd::push_data2D(_density2Matrix, _xsize, _ysize);
@@ -95,15 +101,36 @@ public:
 
     void calculateIntegral() {
 
+        double integral = 0;
+        double center = 0;
+        for(int i=0;i<_xsize;i++) {
+            for(int j=0;j<_ysize;j++) {
+                integral+=_density2Matrix[i][j] * _dx * _dx;
+                center+=_density2Matrix[i][j] * i * _dy;
+            }
+        }
+        //cout << _iter << "\n";
+        _integral[_iter][0] = _nowT;
+        _integral[_iter][1] = integral;
+
+        _center[_iter][0] = _nowT;
+        _center[_iter][1] = center;
     }
+//    void SetIntegralFilename(char* filename) {
+//        _integralFilename = filename;
+//    }
     int GetIteration() {
         return _iter;
     }
     void SaveFlagsMatrixToPNGFile(const char *fileName) {
-        imnd::plot_2d_system(fileName, _density0Matrix, _xsize, _ysize,  _dx, _dy);
+        //imnd::plot_2d_system("r0.png", _density0Matrix, _xsize, _ysize,  _dx, _dy);
+        //imnd::write_2d_system("ro_tab.txt", _density0Matrix, _xsize, _ysize, _dx, _dy );
+        //imnd::plot_2d_system("r1.png", _density1Matrix, _xsize, _ysize,  _dx, _dy);
+        //imnd::plot_2d_system("u.png", _uVelocity, _xsize, _ysize,  _dx, _dy);
+        //imnd::plot_2d_system("v.png", _vVelocity, _xsize, _ysize,  _dx, _dy);
     }
 
-    virtual void SaveResults(char* filename) = 0;
+    virtual void SaveResults(char* filename, char* filename2, char* filename3) = 0;
 
     void PrintMatrixToFile(const char* fileName) {
         ofstream oFile;
